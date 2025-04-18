@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 TurboTrader PRO</title>
+    <script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #121826;
+            color: #e0e0e0;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            height: 100vh;
+        }
+        .chart-container {
+            padding: 20px;
+        }
+        #candlestick-chart {
+            width: 100%;
+            height: 70vh;
+            border-radius: 8px;
+            background-color: #1e2130;
+        }
+        .sidebar {
+            background-color: #1a1d2a;
+            padding: 15px;
+            border-left: 1px solid #2a2e3e;
+        }
+        .balance-box {
+            background-color: #252a3a;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .balance {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4caf50;
+        }
+        .order-form {
+            background-color: #252a3a;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .order-form input, .order-form select, .order-form button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border: 1px solid #2a2e3e;
+            background-color: #1e2130;
+            color: #e0e0e0;
+        }
+        .order-form button {
+            background-color: #4caf50;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+        }
+        .order-form button:hover {
+            background-color: #3e8e41;
+        }
+        .positions {
+            background-color: #252a3a;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #2a2e3e;
+        }
+        .profit {
+            color: #4caf50;
+        }
+        .loss {
+            color: #f44336;
+        }
+        .header {
+            background-color: #1a1d2a;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #2a2e3e;
+        }
+        .logo {
+            font-size: 20px;
+            font-weight: bold;
+            color: #4caf50;
+        }
+        #withdraw-btn {
+            margin-top: 10px;
+            width: 100%;
+            background-color: #1976d2;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        #withdraw-btn:hover {
+            background-color: #1565c0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">🚀 TurboTrader PRO</div>
+        <div>
+            <select id="asset-selector">
+                <option value="BTC">BTC/USD</option>
+                <option value="ETH">ETH/USD</option>
+                <option value="DOGE">DOGE/USD</option>
+                <option value="GME">GME/USD</option>
+            </select>
+        </div>
+    </div>
+    <div class="container">
+        <div class="chart-container">
+            <div id="candlestick-chart"></div>
+        </div>
+        <div class="sidebar">
+            <div class="balance-box">
+                <h3>Account Balance</h3>
+                <div class="balance">$<span id="balance">10,000.00</span></div>
+                <button id="withdraw-btn">💸 Withdraw</button>
+            </div>
+            <div class="order-form">
+                <h3>Place Order</h3>
+                <select id="order-type">
+                    <option value="market">Market</option>
+                    <option value="limit">Limit</option>
+                </select>
+                <select id="order-side">
+                    <option value="buy">Buy</option>
+                    <option value="sell">Sell</option>
+                </select>
+                <input type="number" id="order-amount" placeholder="Amount" value="1">
+                <input type="number" id="order-price" placeholder="Price (for limit orders)">
+                <button id="place-order">Place Order</button>
+            </div>
+            <div class="positions">
+                <h3>Open Positions</h3>
+                <table id="positions-table">
+                    <thead>
+                        <tr>
+                            <th>Asset</th>
+                            <th>Side</th>
+                            <th>Amount</th>
+                            <th>Entry</th>
+                            <th>Current</th>
+                            <th>P/L</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize chart
+        const chart = LightweightCharts.createChart(document.getElementById('candlestick-chart'), {
+            width: 800,
+            height: 500,
+            layout: {
+                backgroundColor: '#1e2130',
+                textColor: '#e0e0e0',
+            },
+            grid: {
+                vertLines: {
+                    color: '#2a2e3e',
+                },
+                horzLines: {
+                    color: '#2a2e3e',
+                },
+            },
+            crosshair: {
+                mode: LightweightCharts.CrosshairMode.Normal,
+            },
+            rightPriceScale: {
+                borderColor: '#2a2e3e',
+            },
+            timeScale: {
+                borderColor: '#2a2e3e',
+            },
+        });
+
+        const candlestickSeries = chart.addCandlestickSeries({
+            upColor: '#4caf50',
+            downColor: '#f44336',
+            borderDownColor: '#f44336',
+            borderUpColor: '#4caf50',
+            wickDownColor: '#f44336',
+            wickUpColor: '#4caf50',
+        });
+
+        function generateRandomCandles(count = 100) {
+            const now = Math.floor(Date.now() / 1000);
+            const candles = [];
+            let lastClose = 50000 + Math.random() * 10000;
+
+            for (let i = 0; i < count; i++) {
+                const time = now - (count - i) * 60 * 60;
+                const open = lastClose;
+                const high = open * (1 + Math.random() * 0.02);
+                const low = open * (1 - Math.random() * 0.02);
+                const close = low + Math.random() * (high - low);
+                lastClose = close;
+
+                candles.push({
+                    time,
+                    open,
+                    high,
+                    low,
+                    close,
+                });
+            }
+            return candles;
+        }
+
+        let candles = generateRandomCandles(200);
+        candlestickSeries.setData(candles);
+
+        setInterval(() => {
+            const lastCandle = candles[candles.length - 1];
+            const newTime = lastCandle.time + 60 * 60;
+            const change = (Math.random() - 0.5) * 0.02;
+            const newClose = lastCandle.close * (1 + change);
+            const newHigh = Math.max(lastCandle.close, newClose) * (1 + Math.random() * 0.01);
+            const newLow = Math.min(lastCandle.close, newClose) * (1 - Math.random() * 0.01);
+
+            const newCandle = {
+                time: newTime,
+                open: lastCandle.close,
+                high: newHigh,
+                low: newLow,
+                close: newClose,
+            };
+
+            candles.push(newCandle);
+            if (candles.length > 300) candles.shift();
+            candlestickSeries.update(newCandle);
+        }, 1000);
+
+        let balance = 10000;
+        let positions = [];
+
+        document.getElementById('place-order').addEventListener('click', () => {
+            const asset = document.getElementById('asset-selector').value;
+            const side = document.getElementById('order-side').value;
+            const amount = parseFloat(document.getElementById('order-amount').value);
+            const price = parseFloat(document.getElementById('order-price').value) || candles[candles.length - 1].close;
+
+            if (side === 'buy' && balance < amount * price) {
+                alert('Insufficient balance!');
+                return;
+            }
+
+            if (side === 'buy') {
+                balance -= amount * price;
+            } else {
+                balance += amount * price;
+            }
+
+            positions.push({
+                asset,
+                side,
+                amount,
+                entryPrice: price,
+                currentPrice: price,
+            });
+
+            updateUI();
+        });
+
+        function updateUI() {
+            document.getElementById('balance').textContent = balance.toFixed(2);
+            const tableBody = document.querySelector('#positions-table tbody');
+            tableBody.innerHTML = '';
+
+            positions.forEach(pos => {
+                const pl = (pos.currentPrice - pos.entryPrice) * pos.amount * (pos.side === 'buy' ? 1 : -1);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${pos.asset}/USD</td>
+                    <td>${pos.side}</td>
+                    <td>${pos.amount}</td>
+                    <td>${pos.entryPrice.toFixed(2)}</td>
+                    <td>${pos.currentPrice.toFixed(2)}</td>
+                    <td class="${pl >= 0 ? 'profit' : 'loss'}">${pl.toFixed(2)}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        setInterval(() => {
+            const lastPrice = candles[candles.length - 1].close;
+            positions.forEach(pos => {
+                pos.currentPrice = lastPrice * (0.99 + Math.random() * 0.02);
+            });
+            updateUI();
+        }, 2000);
+
+        document.getElementById('withdraw-btn').addEventListener('click', () => {
+            alert("⚠️ Please pay for the license key first by contacting the company.");
+            window.open("https://t.me/cryptoflashhubstore", "_blank");
+        });
+    </script>
+</body>
+</html>
